@@ -45,3 +45,55 @@ test('hashId: 确定性且落在 0-359', () => {
   const hue = hashId('opencode-go')
   assert.ok(hue >= 0 && hue < 360)
 })
+
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { readAuthJsonKey, readConfigJsonKey, resolveKey } from '../lib/index.js'
+
+function makeFakeHome() {
+  const home = mkdtempSync(join(tmpdir(), 'ocw-test-'))
+  mkdirSync(join(home, '.local', 'share', 'opencode'), { recursive: true })
+  mkdirSync(join(home, '.config', 'opencode'), { recursive: true })
+  return home
+}
+
+test('readAuthJsonKey / readConfigJsonKey', async (t) => {
+  const home = makeFakeHome()
+  t.after(() => rmSync(home, { recursive: true, force: true }))
+  writeFileSync(
+    join(home, '.local', 'share', 'opencode', 'auth.json'),
+    JSON.stringify({ 'opencode-go': { type: 'api', key: 'sk-auth-test' } }),
+  )
+  writeFileSync(
+    join(home, '.config', 'opencode', 'opencode.json'),
+    JSON.stringify({ provider: { opencodego: { options: { apiKey: 'sk-config-test' } } } }),
+  )
+  assert.equal(readAuthJsonKey(home), 'sk-auth-test')
+  assert.equal(readConfigJsonKey(home), 'sk-config-test')
+  assert.equal(readAuthJsonKey(home, 'nonexistent'), null)
+  assert.equal(readConfigJsonKey(home, 'provider.other.options.apiKey'), null)
+})
+
+test('resolveKey: 凭据优先，链式回退，返回 source 标签', async () => {
+  const resolvers = [
+    { label: 'credential', resolve: async () => null },
+    { label: 'auth.json', resolve: async () => 'sk-fallback' },
+    { label: 'config', resolve: async () => 'sk-config' },
+  ]
+  const got = await resolveKey({}, resolvers)
+  assert.deepEqual(got, { key: 'sk-fallback', source: 'auth.json' })
+})
+
+test('resolveKey: 剥掉 Bearer 前缀；全部解析失败返回 null', async () => {
+  const withBearer = [
+    { label: 'credential', resolve: async () => 'Bearer sk-abc' },
+  ]
+  assert.equal((await resolveKey({}, withBearer)).key, 'sk-abc')
+  const none = [
+    { label: 'credential', resolve: async () => null },
+    { label: 'auth.json', resolve: async () => '' },
+    { label: 'config', resolve: async () => undefined },
+  ]
+  assert.equal(await resolveKey({}, none), null)
+})
