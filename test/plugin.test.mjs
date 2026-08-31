@@ -38,6 +38,7 @@ test('apply 注册 dashboard/widget/icon 路由 + tapIndex，且可清理', () =
   assert.ok(ctx.seen.paths.includes('/usage/dashboard.json'))
   assert.ok(ctx.seen.paths.includes('/usage/widget.js'))
   assert.ok(ctx.seen.paths.includes('/usage/icon/opencode-go.svg'))
+  assert.ok(ctx.seen.paths.includes('/usage/icon/deepseek.svg'))
   assert.equal(ctx.seen.tapIndexes, 1)
   assert.ok(ctx.seen.effects >= 1)
 })

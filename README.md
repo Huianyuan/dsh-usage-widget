@@ -23,9 +23,9 @@ DSH（DeepSeek Harness）Web 界面右下角的**订阅用量卡片**：5 小时
 
 ## 功能特性
 
-- 📊 **三档用量**：5小时 / 本周 / 本月，百分比 + 官网同款重置倒计时（`6 天 9 小时后重置` / `57 分钟后重置`）
-- 🎨 **提供商图标**：浅色卡片用官方品牌 logo；加载失败自动降级为首字母圆标
-- 🚦 **状态色**：`ok` 绿色进度条；`rate-limited` 红色 +「已限流」角标
+- 📊 **两种指标形态**：限流型订阅 → 百分比 + 重置倒计时（如 OpenCode Go：5小时/本周/本月）；金额型订阅 → 余额/消费金额（如 DeepSeek：充值/赠送/总额 + 今日/本月已用）
+- 🎨 **提供商图标**：官方品牌 logo（OpenCode Go / DeepSeek）；加载失败自动降级为首字母圆标
+- 🚦 **状态色**：`ok` 绿色进度条、`rate-limited` 红色 +「已限流」角标；欠费/负余额红色金额
 - 🔄 **自动/手动刷新**：60 秒自动刷新 + 点击卡片手动刷新，带按压回弹动效
 - 🔑 **key 多级解析**：DSH 凭据优先 → 本地配置文件回退，**零配置开箱即用**
 - 🧩 **订阅源注册表**：代码模块注册，自动发现（无 key 的源自动隐藏）、每源独立缓存与错误隔离
@@ -34,9 +34,10 @@ DSH（DeepSeek Harness）Web 界面右下角的**订阅用量卡片**：5 小时
 
 | id | 名称 | 数据来源 | key 解析 |
 |---|---|---|---|
-| `opencode-go` | OpenCode Go | `GET https://opencode.ai/zen/go/v1/usage` | DSH 凭据 `OPENCODE_GO_KEY` → `~/.local/share/opencode/auth.json`(`opencode-go.key`) → `~/.config/opencode/opencode.json`(`provider.opencodego.options.apiKey`) |
+| `opencode-go` | OpenCode Go | `GET https://opencode.ai/zen/go/v1/usage` | 凭据 `OPENCODE_GO_API_KEY` / `OPENCODE_GO_KEY` → `~/.local/share/opencode/auth.json`(`opencode-go.key`) → `~/.config/opencode/opencode.json`(`provider.opencodego.options.apiKey`) |
+| `deepseek` | DeepSeek | 余额 `GET https://api.deepseek.com/user/balance`；消费估算 `GET https://platform.deepseek.com/api/v0/usage/by_api_key/amount` | 余额凭据 `DEEPSEEK_API_KEY`；消费估算凭据 `DEEPSEEK_PLATFORM_TOKEN`（可选） |
 
-前三处都找不到 key 时，该订阅源卡片自动隐藏（不影响其他源）。
+任何源缺 key 时该卡片自动隐藏（不影响其他源）；DeepSeek 只要有 `DEEPSEEK_API_KEY` 就显示余额三行，**消费估算行需另配 `DEEPSEEK_PLATFORM_TOKEN`** 才会出现。
 
 ## 安装
 
@@ -77,11 +78,14 @@ dsh plugin --profile web remove dsh-usage-widget
 curl http://127.0.0.1:3080/usage/dashboard.json                  # 200 JSON，各源三档用量
 curl http://127.0.0.1:3080/usage/widget.js                       # 200 JS
 curl http://127.0.0.1:3080/usage/icon/opencode-go.svg            # 200 image/svg+xml
+curl http://127.0.0.1:3080/usage/icon/deepseek.svg               # 200 image/svg+xml
 ```
 
 浏览器 F5 后右下角出现卡片；点击卡片可手动刷新。
 
-## 数据来源与精度说明（内置源 opencode-go）
+## 数据来源与精度说明
+
+### opencode-go（百分比型）
 
 - 公开接口：`GET https://opencode.ai/zen/go/v1/usage`，头 `Authorization: Bearer <key>`
 - 响应三档 `rolling / weekly / monthly`：`{ status, percent, resetsAt }`
@@ -90,6 +94,14 @@ curl http://127.0.0.1:3080/usage/icon/opencode-go.svg            # 200 image/svg
   - `monthly` = 月度订阅周期（续费日重置）
 - `percent` 为**整数**（服务端向下取整）；官方控制台显示的小数（如 9.6%）来自其服务端内部数据库，公开接口不提供——本插件展示公开接口能拿到的最精确值
 - 倒计时 `resetsAt` 与官网一致（`X 天 Y 小时后重置` 官网同款措辞）
+
+### deepseek（金额型）
+
+- **余额**：`GET https://api.deepseek.com/user/balance`，头 `Authorization: Bearer <DEEPSEEK_API_KEY>`；返回 `balance_infos`（充值/赠送/总额）与 `is_available`（不可用=欠费，金额红色显示）
+- **消费估算**：`GET https://platform.deepseek.com/api/v0/usage/by_api_key/amount?start&end&tz`，头 `Authorization: Bearer <DEEPSEEK_PLATFORM_TOKEN>`
+  - `DEEPSEEK_PLATFORM_TOKEN` 是**平台网页会话令牌**（不是 API key）：浏览器登录 https://platform.deepseek.com → F12 → Network → 找到 `usage/by_api_key/amount` 请求 → 复制其 `Authorization` 值，配置为 DSH 凭据 `DEEPSEEK_PLATFORM_TOKEN`
+  - 接口返回按小时分桶的 token 数（缓存命中/未命中/输出），**不直接给金额** → 按峰谷定价表换算（工作日高峰 9–12 / 14–18 点，2026-08-23 起周末全天谷价；V4 Pro 为 Flash 的 3 倍价）；定价表在 `lib/index.js` 的 `PRICING` 常量，DeepSeek 调价时改这里
+  - 一次请求取整月桶数据，按桶时间（北京时间）分区为 **今日已用 / 本月已用** 两行
 
 ## 如何接入新订阅源（扩展）
 
@@ -134,11 +146,12 @@ curl http://127.0.0.1:3080/usage/icon/opencode-go.svg            # 200 image/svg
 ## 开发
 
 ```powershell
-# 单元测试（core / fetch / plugin / widget-format，共 17 例）
+# 单元测试（core / fetch / plugin / widget-format / deepseek，共 25 例）
 node test/core.test.mjs
 node test/fetch.test.mjs
 node test/plugin.test.mjs
 node test/widget-format.test.mjs
+node test/deepseek.test.mjs
 
 # 开发期热更：lib/index.js 复制到 profile 并编辑 ~/.dsh/profiles/web/cordis.patch.yml，
 # watchUserPatches 实时生效，无需重启 dsh web（正式用请按「安装」章节）
@@ -154,7 +167,8 @@ dsh-usage-widget/
 │   └── index.js          # 宿主插件本体：订阅源注册表 + 路由 + 前端脚本
 ├── assets/
 │   └── icons/
-│       └── opencode-go.svg   # 内置源 opencode-go 的官方提供商图标
+│       ├── opencode-go.svg   # 内置源 opencode-go 的官方提供商图标
+│       └── deepseek.svg      # 内置源 deepseek 的官方提供商图标
 ├── test/                 # node:test 单元测试
 └── README.md
 ```
