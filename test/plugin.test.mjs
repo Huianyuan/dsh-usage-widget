@@ -16,7 +16,7 @@ function fakeCtx() {
 }
 
 test('模块导出契约', () => {
-  assert.equal(name, 'dsh-opencode-go-widget')
+  assert.equal(name, 'dsh-usage-widget')
   assert.deepEqual(inject, ['webServer', 'credentials'])
   assert.equal(typeof apply, 'function')
 })
