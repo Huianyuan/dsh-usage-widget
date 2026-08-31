@@ -1,0 +1,4 @@
+# opencode-go-widget —— DSH bundle patch
+- insert:
+    - id: opencode-go-widget
+      name: opencode-go-widget

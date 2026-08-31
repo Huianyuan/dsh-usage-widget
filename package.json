@@ -1,0 +1,11 @@
+{
+  "name": "opencode-go-widget",
+  "version": "0.1.0",
+  "description": "DSH Web 右下角 OpenCode Go 订阅用量卡片（5小时/周/月），多订阅源可扩展",
+  "keywords": ["dsh", "dsh-plugin", "opencode", "usage", "widget"],
+  "type": "module",
+  "main": "lib/index.js",
+  "files": ["lib", "assets", "cordis.patch.yml", "README.md"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "license": "MIT"
+}
