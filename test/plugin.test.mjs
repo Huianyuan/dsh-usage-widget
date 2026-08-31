@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { name, inject, apply, SOURCES, WIDGET_JS } from '../lib/index.js'
 
 function fakeCtx() {
-  const seen = { paths: [], tapIndexes: 0, effects: 0 }
+  const seen = { paths: [], tapIndexes: 0, effects: 0, events: 0 }
   return {
     seen,
     credentials: { resolve: async () => null },
@@ -11,6 +11,7 @@ function fakeCtx() {
       register: (r) => { seen.paths.push(r.path); return () => {} },
       tapIndex: () => { seen.tapIndexes++; return () => {} },
     },
+    on: () => { seen.events++; return () => {} },
     effect: (fn) => { seen.effects++; const cleanup = fn(); if (typeof cleanup === 'function') cleanup() },
   }
 }
@@ -40,6 +41,7 @@ test('apply 注册 dashboard/widget/icon 路由 + tapIndex，且可清理', () =
   assert.ok(ctx.seen.paths.includes('/usage/icon/opencode-go.svg'))
   assert.ok(ctx.seen.paths.includes('/usage/icon/deepseek.svg'))
   assert.equal(ctx.seen.tapIndexes, 1)
+  assert.equal(ctx.seen.events, 1) // 监听 session/event 用于 provider 检测
   assert.ok(ctx.seen.effects >= 1)
 })
 

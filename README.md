@@ -32,10 +32,10 @@ DSH（DeepSeek Harness）Web 界面右下角的**订阅用量卡片**：5 小时
 
 ## 内置订阅源
 
-| id | 名称 | 数据来源 | key 解析 |
-|---|---|---|---|
-| `opencode-go` | OpenCode Go | `GET https://opencode.ai/zen/go/v1/usage` | 凭据 `OPENCODE_GO_API_KEY` / `OPENCODE_GO_KEY` → `~/.local/share/opencode/auth.json`(`opencode-go.key`) → `~/.config/opencode/opencode.json`(`provider.opencodego.options.apiKey`) |
-| `deepseek` | DeepSeek | 余额 `GET https://api.deepseek.com/user/balance`；消费估算 `GET https://platform.deepseek.com/api/v0/usage/by_api_key/amount` | 余额凭据 `DEEPSEEK_API_KEY`；消费估算凭据 `DEEPSEEK_PLATFORM_TOKEN`（可选） |
+| id | 名称 | 数据来源 | key 解析 | provider 匹配 |
+|---|---|---|---|---|
+| `opencode-go` | OpenCode Go | `GET https://opencode.ai/zen/go/v1/usage` | 凭据 `OPENCODE_GO_API_KEY` / `OPENCODE_GO_KEY` → `~/.local/share/opencode/auth.json`(`opencode-go.key`) → `~/.config/opencode/opencode.json`(`provider.opencodego.options.apiKey`) | `opencode-go` / `opencodego` |
+| `deepseek` | DeepSeek | 余额 `GET https://api.deepseek.com/user/balance`；消费估算 `GET https://platform.deepseek.com/api/v0/usage/by_api_key/amount` | 余额凭据 `DEEPSEEK_API_KEY`；消费估算凭据 `DEEPSEEK_PLATFORM_TOKEN`（可选） | `deepseek` / `deepseek-api` |
 
 任何源缺 key 时该卡片自动隐藏（不影响其他源）；DeepSeek 只要有 `DEEPSEEK_API_KEY` 就显示余额三行，**消费估算行需另配 `DEEPSEEK_PLATFORM_TOKEN`** 才会出现。
 
@@ -114,6 +114,7 @@ curl http://127.0.0.1:3080/usage/icon/deepseek.svg               # 200 image/svg
      id: 'some-service',                    // 稳定 ID（决定图标路由）
      name: 'Some Service',                  // 展示名
      metric: 'percent-windows',             // 指标类型
+     providerHints: ['some-service'],       // 该订阅映射的 DSH provider id（按提供商自动切换用）
      keyResolvers: [                        // key 解析链（按序取第一个非空）
        credentialResolver('SOME_KEY'),      // DSH 凭据
        { label: 'config', resolve: () => readConfigJsonKey(os.homedir(), 'provider.xxx.options.apiKey') },
@@ -137,10 +138,24 @@ curl http://127.0.0.1:3080/usage/icon/deepseek.svg               # 200 image/svg
 
 未来指标类型扩展（如余额金额、token 用量）：`metric` 新增枚举 + `windows[]` 条目扩展字段（`unit` / `used` / `limit`），前端对未知 `metric` 降级显示原始数字，不崩溃。
 
+## 按提供商自动切换（已实现）
+
+插件监听 `session/event` 的 `assistant/message`，读取消息来源 `message.source.provider`（DSH 消息类型定义：`AssistantProvenance { provider, model }`），维护"最近一次使用的提供商"：
+
+| 情况 | 挂件显示 |
+|---|---|
+| provider 命中某源的 `providerHints` | **只显示该源卡片** |
+| provider 未命中任何源（如 openrouter） | 显示全部（兜底） |
+| 尚未产生 assistant 消息（刚开页面） | 显示全部 |
+
+- 只影响 `/usage/dashboard.json` 的返回（显示层），各源数据照常拉取与缓存；前端零改动
+- 响应附带 `activeProvider` 字段便于调试
+- 每源的 `providerHints` 可配置（见内置源表），后续新增 provider 只需在对应源补 hints
+- 注意：**判定依据是提供商（provider），不是模型**——同一模型经不同提供商路由也能正确区分
+
 ## 后续规划（未实现，仅记录方向）
 
 - **更多订阅源**：按个人需要以代码模块形式继续叠加（兼容切换，不影响已有源）
-- **按当前会话模型自动切换**：监听会话事件（如 `assistant/message` 携带的 provider/model），自动识别当前使用的模型所属订阅源，高亮/切换对应卡片
 - **声明式订阅配置**（评估中）：若订阅形态趋同，可考虑把代码模块下沉为配置项（URL + key 来源 + 字段映射）
 
 ## 开发
