@@ -140,18 +140,14 @@ curl http://127.0.0.1:3080/usage/icon/deepseek.svg               # 200 image/svg
 
 ## 按提供商自动切换（已实现）
 
-插件监听 `session/event` 的 `assistant/message`，读取消息来源 `message.source.provider`（DSH 消息类型定义：`AssistantProvenance { provider, model }`），维护"最近一次使用的提供商"：
+插件监听会话事件中的提供商信源，维护"当前使用的提供商"，并**记忆到 `$DSH_HOME/.dsh-usage-active.json`**（下次打开页面直接沿用，不再先显示全部）：
 
-| 情况 | 挂件显示 |
-|---|---|
-| provider 命中某源的 `providerHints` | **只显示该源卡片** |
-| provider 未命中任何源（如 openrouter） | 显示全部（兜底） |
-| 尚未产生 assistant 消息（刚开页面） | 显示全部 |
-
-- 只影响 `/usage/dashboard.json` 的返回（显示层），各源数据照常拉取与缓存；前端零改动
-- 响应附带 `activeProvider` 字段便于调试
+- **检测**：`request/context` 事件（请求开始时即携带 `{provider, model}`，最及时）+ `assistant/message` 事件（`message.source.provider`）双信源，任一变化即更新
+- **判定**：provider 命中某源的 `providerHints` → 只显示该源；未命中（如 openrouter）→ 显示全部；从未检测到 → 显示全部
+- **即时推送**：Web 挂件通过 SSE（`/usage/stream`）订阅 provider 变化，切换**约 1 秒内**反映到卡片（不再等 60s 轮询）；SSE 不可用时退化为 60s 轮询兜底
+- 只影响 `/usage/dashboard.json` 与卡片显示，各源数据照常拉取与缓存；响应附带 `activeProvider` 字段便于调试
 - 每源的 `providerHints` 可配置（见内置源表），后续新增 provider 只需在对应源补 hints
-- 注意：**判定依据是提供商（provider），不是模型**——同一模型经不同提供商路由也能正确区分
+- 注意：**判定依据是提供商（provider），不是模型**——同一模型经不同提供商路由也能正确区分；手动切换模型后，下一条请求发出时卡片立即跟随切换
 
 ## 后续规划（未实现，仅记录方向）
 
