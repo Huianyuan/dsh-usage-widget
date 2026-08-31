@@ -142,8 +142,8 @@ curl http://127.0.0.1:3080/usage/icon/deepseek.svg               # 200 image/svg
 
 插件监听会话事件中的提供商信源，维护"当前使用的提供商"，并**记忆到 `$DSH_HOME/.dsh-usage-active.json`**（下次打开页面直接沿用，不再先显示全部）：
 
-- **检测**：`request/context` 事件（请求开始时即携带 `{provider, model}`，最及时）+ `assistant/message` 事件（`message.source.provider`）双信源，任一变化即更新
-- **判定**：provider 命中某源的 `providerHints` → 只显示该源；未命中（如 openrouter）→ 显示全部；从未检测到 → 显示全部
+- **检测**：三路信源——① `request/context` 事件（请求开始时携带 `{provider, model}`）② `assistant/message` 事件（`message.source.provider`）③ **`fs.watch` 监听 `$DSH_HOME/settings.yaml`**（聊天里切换模型会写 `agent-default-model`，文件一变即跟随，**无需等发消息**）
+- **判定**：provider 命中某源的 `providerHints` → 只显示该源；未命中（如 openrouter）→ 显示全部 + 提示行「当前提供商 X 未匹配订阅」；从未检测到 → 显示全部
 - **即时推送**：Web 挂件通过 SSE（`/usage/stream`）订阅 provider 变化，切换**约 1 秒内**反映到卡片（不再等 60s 轮询）；SSE 不可用时退化为 60s 轮询兜底
 - 只影响 `/usage/dashboard.json` 与卡片显示，各源数据照常拉取与缓存；响应附带 `activeProvider` 字段便于调试
 - 每源的 `providerHints` 可配置（见内置源表），后续新增 provider 只需在对应源补 hints
