@@ -33,7 +33,7 @@ DSH（DeepSeek Harness）Web 界面右下角的 **OpenCode Go 订阅用量卡片
 ### 方式 A：直接从 GitHub 安装（推荐）
 
 ```powershell
-dsh plugin --profile web add github:<GitHub用户名>/OpenCode-Go-Widget
+dsh plugin --profile web add github:Huianyuan/dsh-opencode-go-widget
 ```
 
 说明：
@@ -41,7 +41,7 @@ dsh plugin --profile web add github:<GitHub用户名>/OpenCode-Go-Widget
 - 装完后插件出现在 DSH 的**插件管理页面**，之后可以直接在页面里更新，无需手动执行命令
 - 网络需要代理时，先设置代理环境变量再执行：
   ```powershell
-  $env:http_proxy="http://<ip>:<port>"; $env:https_proxy="http://<ip>:<port>"; $env:all_proxy="socks5://<ip>:<port>"; dsh plugin --profile web add github:<GitHub用户名>/OpenCode-Go-Widget
+  $env:http_proxy="http://<ip>:<port>"; $env:https_proxy="http://<ip>:<port>"; $env:all_proxy="socks5://<ip>:<port>"; dsh plugin --profile web add github:Huianyuan/dsh-opencode-go-widget
   ```
 - 安装完成后**重启 `dsh web`**，再 **F5 刷新浏览器**
 
@@ -58,7 +58,7 @@ dsh plugin --profile web add link:<本仓库绝对路径>
 ### 卸载
 
 ```powershell
-dsh plugin --profile web remove opencode-go-widget
+dsh plugin --profile web remove dsh-opencode-go-widget
 ```
 
 ## 使用（API key 来源，零配置）
@@ -141,7 +141,7 @@ node test/widget-format.test.mjs
 目录结构：
 
 ```text
-opencode-go-widget/
+dsh-opencode-go-widget/
 ├── package.json          # DSH bundle 插件元数据（dsh.bundle.patch）
 ├── cordis.patch.yml      # 插件挂载声明
 ├── lib/
