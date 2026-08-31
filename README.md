@@ -2,7 +2,13 @@
 
 DSH（DeepSeek Harness）Web 界面右下角的**订阅用量卡片**：5 小时滚动窗口 / 本周 / 本月三档用量百分比 + 官网同款重置倒计时 + 提供商图标。订阅源以**代码模块**注册（`SOURCES[]`），新增订阅源时**前端与路由零改动**；内置 **OpenCode Go** 订阅为第一个开箱即用的默认源。
 
-![挂件效果截图](assets/screenshot.png)
+## 效果截图
+
+| 状态 | 截图 |
+|---|---|
+| 使用 OpenCode Go（provider `opencode-go`，默认） | ![OpenCode Go 卡片](assets/screenshot-opencode-go.png) |
+| 使用 DeepSeek（provider `deepseek-official`） | ![DeepSeek 卡片](assets/screenshot-deepseek.png) |
+| provider 未匹配任何订阅（显示全部 + 提示行） | ![全部卡片](assets/screenshot-all.png) |
 
 ## 项目来源
 
@@ -177,6 +183,9 @@ dsh-usage-widget/
 ├── lib/
 │   └── index.js          # 宿主插件本体：订阅源注册表 + 路由 + 前端脚本
 ├── assets/
+│   ├── screenshot-opencode-go.png  # 效果截图（README 展示用）
+│   ├── screenshot-deepseek.png
+│   ├── screenshot-all.png
 │   └── icons/
 │       ├── opencode-go.svg   # 内置源 opencode-go 的官方提供商图标
 │       └── deepseek.svg      # 内置源 deepseek 的官方提供商图标
