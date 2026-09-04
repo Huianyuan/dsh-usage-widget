@@ -25,6 +25,8 @@ function extractFn(name) {
 
 const formatCountdown = extractFn('formatCountdown')
 const clampDrag = extractFn('clampDrag')
+const pctFromPx = extractFn('pctFromPx')
+const pxFromPct = extractFn('pxFromPct')
 const now = 0 // 统一以 0 为基准，iso 用秒数构造
 
 test('formatCountdown: 官网同款措辞（天/小时/分钟）', () => {
@@ -56,4 +58,18 @@ test('clampDrag: 越界钳制到视口内', () => {
 
 test('clampDrag: 挂件大于视口时钳到 0（不产生负坐标）', () => {
   assert.deepEqual(clampDrag(100, 100, 1200, 900, 1000, 800), { x: 0, y: 0 })
+})
+
+test('pctFromPx: 像素转相对比例（0-1，钳制）', () => {
+  assert.ok(Math.abs(pctFromPx(1600, 132, 1920) - 1600 / 1788) < 1e-9)
+  assert.equal(pctFromPx(0, 280, 1920), 0)
+  assert.equal(pctFromPx(99999, 280, 1920), 1)
+  assert.equal(pctFromPx(100, 1920, 1500), 0) // 视口比挂件小 → 0
+})
+
+test('pxFromPct: 相对比例回到像素并钳制在视口内', () => {
+  assert.ok(Math.abs(pxFromPct(1600 / 1788, 132, 1920) - 1600) < 1e-6)
+  assert.equal(pxFromPct(1, 280, 1920), 1640) // 1920-280
+  assert.equal(pxFromPct(-0.5, 280, 1920), 0)
+  assert.equal(pxFromPct(0.5, 1500, 1200), 0) // 挂件大于视口 → 0
 })
